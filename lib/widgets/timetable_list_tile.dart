@@ -6,7 +6,7 @@ import '../models/tra_models.dart';
 /// 時刻表清單中的單一列（重新設計版）。
 ///
 /// 版面由上到下：
-/// 1. 出發時間 --------> 抵達時間　　狀態徽章（準點/誤點/已過站/尚未發車）
+/// 1. 出發時間 --> 抵達時間（置中）　　狀態徽章（準點/誤點/已過站/尚未發車）
 /// 2. 車種＋車次號、開往XX
 /// 3. 經過幾站・行駛時間（小字）
 ///
@@ -44,29 +44,39 @@ class TimetableListTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 第一行：出發時間 -> 抵達時間 + 狀態徽章
+                // 第一行：出發時間 --> 抵達時間（置中）+ 狀態徽章
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      _formatTime(origin.departureTime),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                    ),
                     Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Center(
                         child: Row(
-                          children: const [
-                            Expanded(child: Divider(color: AppColors.divider, thickness: 1.4)),
-                            Icon(Icons.arrow_forward, size: 16, color: AppColors.textSecondary),
-                            Expanded(child: Divider(color: AppColors.divider, thickness: 1.4)),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatTime(origin.departureTime),
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.w800),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                '-->',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary),
+                              ),
+                            ),
+                            Text(
+                              _formatTime(dest.arrivalTime),
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.w800),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                    Text(
-                      _formatTime(dest.arrivalTime),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(width: 10),
                     _buildStatusBadge(),
@@ -79,18 +89,23 @@ class TimetableListTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${info.trainTypeName.isEmpty ? '' : info.trainTypeName} ${info.trainNo}　開往 ${info.endingStationName}',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
+                    const Icon(Icons.chevron_right,
+                        size: 18, color: AppColors.textSecondary),
                   ],
                 ),
                 const SizedBox(height: 2),
                 // 第三行：經過幾站・行駛時間
                 Text(
                   '經過 ${entry.stopsBetween} 站・${_formatDuration(entry.durationMinutes)}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textDisabled),
                 ),
               ],
             ),
@@ -123,7 +138,8 @@ class TimetableListTile extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w800),
+        style: TextStyle(
+            fontSize: 11, color: color, fontWeight: FontWeight.w800),
       ),
     );
   }

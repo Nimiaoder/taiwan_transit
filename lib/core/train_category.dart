@@ -21,7 +21,8 @@ enum TrainCategory {
 class TrainCategoryUtil {
   TrainCategoryUtil._();
 
-  /// 兩大群組的頁籤名稱
+  /// 三個頁籤的名稱（「全部」在最前面）
+  static const String groupAll = '全部';
   static const String groupLocal = '區間'; // 區間 + 區間快
   static const String groupExpress = '對號座'; // 普悠瑪 + 太魯閣 + 自強 + 莒光 + 其他
 

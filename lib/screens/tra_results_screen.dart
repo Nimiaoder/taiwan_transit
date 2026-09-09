@@ -14,8 +14,8 @@ import 'tra_train_detail_screen.dart';
 /// =====================================================================
 /// 台鐵時刻表查詢結果清單
 /// =====================================================================
-/// - 上方用頁籤區分「區間」（區間/區間快）與「對號座」（自強/普悠瑪/太魯閣/莒光等）
-/// - 顯示「起站 -> 迄站」在查詢日期的所有班次（依頁籤 + 時間範圍過濾）
+/// - 上方用頁籤區分「全部」「區間」「對號座」（預設為「全部」）
+/// - 顯示「起站 -> 迄站」在查詢日期、出發時間到當日 23:59 的所有班次
 /// - 開啟畫面後自動捲動到使用者輸入的起始時間附近
 /// - 已經發車（早於目前時間）的班次整列反灰、標註「已過站」
 /// - 定時刷新即時動態（誤點資訊），每一筆都會顯示準點/誤點/尚未發車狀態
@@ -39,13 +39,14 @@ class TraResultsScreen extends StatefulWidget {
 
 class _TraResultsScreenState extends State<TraResultsScreen>
     with SingleTickerProviderStateMixin {
-  // 新版列項高度較高（多了「經過幾站・行駛時間」那一行），抓寬鬆一點方便自動捲動估算
   static const double _itemHeight = 128;
 
   final _service = TraService.instance;
-  // 兩個頁籤各自要有獨立的 ScrollController，共用同一個會導致
-  // 「同時 attach 到兩個 ListView」的 assertion 錯誤。
-  final List<ScrollController> _scrollControllers = [ScrollController(), ScrollController()];
+  final List<ScrollController> _scrollControllers = [
+    ScrollController(),
+    ScrollController(),
+    ScrollController(),
+  ];
   late final TabController _tabController;
 
   bool _loading = true;
@@ -61,9 +62,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this)
+    _tabController = TabController(length: 3, vsync: this)
       ..addListener(() {
-        // 切換頁籤後重新捲動到查詢時間附近
         if (!_tabController.indexIsChanging) {
           WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToStartTime());
         }
@@ -97,8 +97,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
         destinationStationId: widget.destination.stationId,
         trainDate: _trainDate,
       );
-      entries.sort((a, b) =>
-          _timeToMinutes(a.originStopTime.departureTime).compareTo(_timeToMinutes(b.originStopTime.departureTime)));
+      entries.sort((a, b) => _timeToMinutes(a.originStopTime.departureTime)
+          .compareTo(_timeToMinutes(b.originStopTime.departureTime)));
 
       setState(() {
         _allEntries = entries;
@@ -109,7 +109,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToStartTime());
     } catch (e) {
       setState(() {
-        _error = '查詢失敗：$e';
+        _error = TraService.friendlyMessage(e);
         _loading = false;
       });
     }
@@ -130,13 +130,14 @@ class _TraResultsScreenState extends State<TraResultsScreen>
     }).toList();
   }
 
-  /// 依目前頁籤（區間 / 對號座）過濾
+  /// 依目前頁籤過濾：0=全部, 1=區間, 2=對號座
   List<TraTimetableEntry> _entriesForTab(int tabIndex) {
     final timeFiltered = _timeFilteredEntries;
+    if (tabIndex == 0) return timeFiltered;
     return timeFiltered.where((e) {
       final category = TrainCategoryUtil.categorize(e.trainInfo.trainTypeName);
       final isLocal = TrainCategoryUtil.isLocalGroup(category);
-      return tabIndex == 0 ? isLocal : !isLocal;
+      return tabIndex == 1 ? isLocal : !isLocal;
     }).toList();
   }
 
@@ -164,7 +165,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
     );
     if (targetIndex < 0) targetIndex = entries.length - 1;
     final maxExtent = controller.position.maxScrollExtent;
-    final offset = (targetIndex * _itemHeight).clamp(0.0, maxExtent < 0 ? 0.0 : maxExtent);
+    final offset =
+        (targetIndex * _itemHeight).clamp(0.0, maxExtent < 0 ? 0.0 : maxExtent);
     controller.animateTo(
       offset,
       duration: const Duration(milliseconds: 400),
@@ -197,7 +199,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textSecondary,
                 indicatorColor: AppColors.primary,
-                tabs: [
+                tabs: const [
+                  Tab(text: TrainCategoryUtil.groupAll),
                   Tab(text: TrainCategoryUtil.groupLocal),
                   Tab(text: TrainCategoryUtil.groupExpress),
                 ],
@@ -212,6 +215,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
                   children: [
                     _buildList(_entriesForTab(0), _scrollControllers[0]),
                     _buildList(_entriesForTab(1), _scrollControllers[1]),
+                    _buildList(_entriesForTab(2), _scrollControllers[2]),
                   ],
                 ),
     );
@@ -238,7 +242,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
   Widget _buildList(List<TraTimetableEntry> entries, ScrollController controller) {
     if (entries.isEmpty) {
       return const Center(
-        child: Text('這個時間範圍內沒有符合條件的班次', style: TextStyle(color: AppColors.textSecondary)),
+        child: Text('這個時間範圍內沒有符合條件的班次',
+            style: TextStyle(color: AppColors.textSecondary)),
       );
     }
     return RefreshIndicator(

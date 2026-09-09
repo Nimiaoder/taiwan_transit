@@ -62,7 +62,7 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = '查詢車次詳細資料失敗：$e';
+        _error = TraService.friendlyMessage(e);
         _loading = false;
       });
     }

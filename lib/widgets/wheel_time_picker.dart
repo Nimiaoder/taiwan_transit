@@ -124,15 +124,13 @@ class _WheelTimePickerState extends State<WheelTimePicker> {
   }
 }
 
-/// 彈出「起訖時間」滾輪選擇的 BottomSheet，回傳選好的 (起, 迄) TimeOfDay。
-Future<void> showTimeRangePickerSheet({
+/// 彈出「出發時間」滾輪選擇的 BottomSheet，回傳選好的 TimeOfDay。
+Future<void> showDepartureTimePickerSheet({
   required BuildContext context,
-  required TimeOfDay initialStart,
-  required TimeOfDay initialEnd,
-  required void Function(TimeOfDay start, TimeOfDay end) onConfirm,
+  required TimeOfDay initialTime,
+  required void Function(TimeOfDay time) onConfirm,
 }) {
-  TimeOfDay start = initialStart;
-  TimeOfDay end = initialEnd;
+  TimeOfDay time = initialTime;
 
   return showModalBottomSheet(
     context: context,
@@ -148,32 +146,25 @@ Future<void> showTimeRangePickerSheet({
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '選擇查詢時間範圍',
+                    '選擇出發時間',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    '24 小時制，將列出此時間區間內從起站發車的班次',
+                    '將列出從此時間到當日 23:59 從起站發車的班次',
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 16),
-                  const Text('起始時間', style: TextStyle(color: AppColors.textSecondary)),
                   WheelTimePicker(
-                    initialTime: start,
-                    onChanged: (t) => start = t,
-                  ),
-                  const Divider(height: 32),
-                  const Text('結束時間', style: TextStyle(color: AppColors.textSecondary)),
-                  WheelTimePicker(
-                    initialTime: end,
-                    onChanged: (t) => end = t,
+                    initialTime: time,
+                    onChanged: (t) => time = t,
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        onConfirm(start, end);
+                        onConfirm(time);
                         Navigator.of(context).pop();
                       },
                       child: const Text('確定'),

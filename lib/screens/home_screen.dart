@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
 import '../widgets/transport_mode_grid_item.dart';
+import 'settings_screen.dart';
 import 'tra_search_screen.dart';
 
 /// =====================================================================
@@ -50,7 +51,20 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('台灣大眾運輸')),
+      appBar: AppBar(
+        title: const Text('台灣大眾運輸'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '設定',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -70,7 +84,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisSpacing: 16,
                   childAspectRatio: 1.1,
                 ),
-                itemBuilder: (context, index) => TransportModeGridItem(item: items[index]),
+                itemBuilder: (context, index) =>
+                    TransportModeGridItem(item: items[index]),
               ),
             ),
           ],

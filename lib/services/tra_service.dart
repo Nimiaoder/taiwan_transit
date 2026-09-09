@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -10,6 +11,9 @@ import 'tdx_auth_service.dart';
 /// =====================================================================
 /// 封裝所有跟「台鐵」有關的 TDX API 呼叫。
 ///
+/// 車站清單已改為內建靜態資料（見 lib/core/tra_stations.dart），
+/// 不再透過 API 查詢站名；這裡只保留時刻表查詢與即時動態相關 API。
+///
 /// 之後如果要新增公車 / 高鐵 / 捷運，建議依樣畫葫蘆各寫一個
 /// `BusService` / `ThsrService` / `MetroService`，
 /// 並讓它們都透過同一個 [TdxAuthService] 取得 token，
@@ -19,9 +23,6 @@ class TraService {
   static final TraService instance = TraService._internal();
 
   final _auth = TdxAuthService.instance;
-
-  // 車站清單快取（一整天內幾乎不會變動，查一次快取起來即可）
-  List<TraStation>? _stationCache;
 
   Uri _buildUri(String path, [Map<String, String>? query]) {
     return Uri.parse('${TdxConfig.apiBaseUrl}$path').replace(
@@ -35,7 +36,9 @@ class TraService {
   Future<dynamic> _get(String path, [Map<String, String>? query]) async {
     final headers = await _auth.buildHeaders();
     final uri = _buildUri(path, query);
-    final response = await http.get(uri, headers: headers);
+    final response = await http
+        .get(uri, headers: headers)
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
       throw Exception('TDX API 錯誤 (${response.statusCode}): $uri\n${response.body}');
     }
@@ -83,14 +86,25 @@ class TraService {
     throw Exception('TDX API 回傳非預期格式（既非陣列也非物件）：$data');
   }
 
-  /// 取得台鐵所有車站清單
-  Future<List<TraStation>> getStations({bool forceRefresh = false}) async {
-    if (!forceRefresh && _stationCache != null) return _stationCache!;
-    final data = await _getList('/v3/Rail/TRA/Station', arrayKey: 'Stations');
-    final stations =
-        data.map((e) => TraStation.fromJson(e as Map<String, dynamic>)).toList();
-    _stationCache = stations;
-    return stations;
+  /// 將底層例外轉成「人話」訊息，讓畫面顯示友善提示。
+  static String friendlyMessage(Object e) {
+    final msg = e.toString();
+    if (e is TimeoutException ||
+        msg.contains('Timeout') ||
+        msg.contains('timed out')) {
+      return '連線逾時，請檢查網路連線後再試一次。';
+    }
+    if (msg.contains('Socket') ||
+        msg.contains('Failed host') ||
+        msg.contains('Network') ||
+        msg.contains('handshake') ||
+        msg.contains('Connection')) {
+      return '網路連線異常，請檢查網路連線後再試一次。';
+    }
+    if (msg.contains('TDX 授權失敗') || msg.contains('Valid API Key')) {
+      return '系統暫時無法取得資料，請稍後再試。';
+    }
+    return '系統發生錯誤，請稍後再試。';
   }
 
   /// 查詢「起站 -> 迄站」在指定日期的所有時刻表

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
-import '../core/tra_regions.dart';
+import '../core/tra_stations.dart';
 import '../models/tra_models.dart';
 
 /// =====================================================================
@@ -42,12 +42,12 @@ class _RegionStationPickerSheetState extends State<_RegionStationPickerSheet> {
 
     final grouped = <String, List<TraStation>>{};
     for (final station in widget.stations) {
-      final region = TraRegions.regionOf(station.name);
+      final region = TraStations.regionOf(station.name);
       grouped.putIfAbsent(region, () => []).add(station);
     }
 
     // 只顯示實際有車站的地區，並依照固定順序排列
-    _availableRegions = TraRegions.orderedRegions.where((r) => grouped.containsKey(r)).toList();
+    _availableRegions = TraStations.orderedRegions.where((r) => grouped.containsKey(r)).toList();
     _stationsByRegion = grouped;
     _selectedRegion = _availableRegions.isNotEmpty ? _availableRegions.first : '';
   }
@@ -131,7 +131,6 @@ class _RegionStationPickerSheetState extends State<_RegionStationPickerSheet> {
                                 final station = stationsInRegion[index];
                                 return ListTile(
                                   title: Text(station.name),
-                                  subtitle: Text(station.stationId, style: const TextStyle(fontSize: 11)),
                                   onTap: () => Navigator.of(context).pop(station),
                                 );
                               },
