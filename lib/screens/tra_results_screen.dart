@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../config/tdx_config.dart';
 import '../core/theme/app_theme.dart';
+import '../core/train_category.dart';
 import '../models/tra_models.dart';
 import '../services/tra_service.dart';
 import '../widgets/timetable_list_tile.dart';
@@ -13,16 +14,16 @@ import 'tra_train_detail_screen.dart';
 /// =====================================================================
 /// 台鐵時刻表查詢結果清單
 /// =====================================================================
-/// - 顯示「起站 -> 迄站」在查詢日期的所有班次（依選定車種過濾）
+/// - 上方用頁籤區分「區間」（區間/區間快）與「對號座」（自強/普悠瑪/太魯閣/莒光等）
+/// - 顯示「起站 -> 迄站」在查詢日期的所有班次（依頁籤 + 時間範圍過濾）
 /// - 開啟畫面後自動捲動到使用者輸入的起始時間附近
 /// - 已經發車（早於目前時間）的班次整列反灰、標註「已過站」
-/// - 定時刷新即時動態（誤點資訊）
+/// - 定時刷新即時動態（誤點資訊），每一筆都會顯示準點/誤點/尚未發車狀態
 class TraResultsScreen extends StatefulWidget {
   final TraStation origin;
   final TraStation destination;
   final TimeOfDay startTime;
   final TimeOfDay endTime;
-  final Set<String> selectedTrainTypeIds;
 
   const TraResultsScreen({
     super.key,
@@ -30,24 +31,27 @@ class TraResultsScreen extends StatefulWidget {
     required this.destination,
     required this.startTime,
     required this.endTime,
-    required this.selectedTrainTypeIds,
   });
 
   @override
   State<TraResultsScreen> createState() => _TraResultsScreenState();
 }
 
-class _TraResultsScreenState extends State<TraResultsScreen> {
-  static const double _itemHeight = 100; // TimetableListTile 的預估高度（含間距）
+class _TraResultsScreenState extends State<TraResultsScreen>
+    with SingleTickerProviderStateMixin {
+  // 新版列項高度較高（多了「經過幾站・行駛時間」那一行），抓寬鬆一點方便自動捲動估算
+  static const double _itemHeight = 128;
 
   final _service = TraService.instance;
-  final _scrollController = ScrollController();
+  // 兩個頁籤各自要有獨立的 ScrollController，共用同一個會導致
+  // 「同時 attach 到兩個 ListView」的 assertion 錯誤。
+  final List<ScrollController> _scrollControllers = [ScrollController(), ScrollController()];
+  late final TabController _tabController;
 
   bool _loading = true;
   String? _error;
 
   List<TraTimetableEntry> _allEntries = [];
-  List<TraTimetableEntry> _filteredEntries = [];
   Map<String, TraLiveBoard> _liveBoards = {};
 
   Timer? _liveBoardTimer;
@@ -57,6 +61,13 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(() {
+        // 切換頁籤後重新捲動到查詢時間附近
+        if (!_tabController.indexIsChanging) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToStartTime());
+        }
+      });
     _trainDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _load();
     _liveBoardTimer = Timer.periodic(
@@ -68,7 +79,10 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
   @override
   void dispose() {
     _liveBoardTimer?.cancel();
-    _scrollController.dispose();
+    for (final c in _scrollControllers) {
+      c.dispose();
+    }
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -88,7 +102,6 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
 
       setState(() {
         _allEntries = entries;
-        _filteredEntries = _applyFilter(entries);
         _loading = false;
       });
 
@@ -107,15 +120,23 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
     if (mounted) setState(() => _liveBoards = boards);
   }
 
-  List<TraTimetableEntry> _applyFilter(List<TraTimetableEntry> entries) {
+  /// 依「時間範圍」過濾（車種頁籤由 build() 時另外套用）
+  List<TraTimetableEntry> get _timeFilteredEntries {
     final startMin = widget.startTime.hour * 60 + widget.startTime.minute;
     final endMin = widget.endTime.hour * 60 + widget.endTime.minute;
-    return entries.where((e) {
-      final typeOk = widget.selectedTrainTypeIds.isEmpty ||
-          widget.selectedTrainTypeIds.contains(e.trainInfo.trainTypeId);
+    return _allEntries.where((e) {
       final depMin = _timeToMinutes(e.originStopTime.departureTime);
-      final timeOk = depMin >= startMin && depMin <= endMin;
-      return typeOk && timeOk;
+      return depMin >= startMin && depMin <= endMin;
+    }).toList();
+  }
+
+  /// 依目前頁籤（區間 / 對號座）過濾
+  List<TraTimetableEntry> _entriesForTab(int tabIndex) {
+    final timeFiltered = _timeFilteredEntries;
+    return timeFiltered.where((e) {
+      final category = TrainCategoryUtil.categorize(e.trainInfo.trainTypeName);
+      final isLocal = TrainCategoryUtil.isLocalGroup(category);
+      return tabIndex == 0 ? isLocal : !isLocal;
     }).toList();
   }
 
@@ -133,17 +154,18 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
   }
 
   void _scrollToStartTime() {
-    if (_filteredEntries.isEmpty || !_scrollController.hasClients) return;
+    final tabIndex = _tabController.index;
+    final controller = _scrollControllers[tabIndex];
+    final entries = _entriesForTab(tabIndex);
+    if (entries.isEmpty || !controller.hasClients) return;
     final startMin = widget.startTime.hour * 60 + widget.startTime.minute;
-    int targetIndex = _filteredEntries.indexWhere(
+    int targetIndex = entries.indexWhere(
       (e) => _timeToMinutes(e.originStopTime.departureTime) >= startMin,
     );
-    if (targetIndex < 0) targetIndex = _filteredEntries.length - 1;
-    final offset = (targetIndex * _itemHeight).clamp(
-      0.0,
-      _scrollController.position.maxScrollExtent,
-    );
-    _scrollController.animateTo(
+    if (targetIndex < 0) targetIndex = entries.length - 1;
+    final maxExtent = controller.position.maxScrollExtent;
+    final offset = (targetIndex * _itemHeight).clamp(0.0, maxExtent < 0 ? 0.0 : maxExtent);
+    controller.animateTo(
       offset,
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOut,
@@ -168,12 +190,30 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.origin.name} → ${widget.destination.name}'),
+        bottom: _loading || _error != null
+            ? null
+            : TabBar(
+                controller: _tabController,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textSecondary,
+                indicatorColor: AppColors.primary,
+                tabs: [
+                  Tab(text: TrainCategoryUtil.groupLocal),
+                  Tab(text: TrainCategoryUtil.groupExpress),
+                ],
+              ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildError()
-              : _buildList(),
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildList(_entriesForTab(0), _scrollControllers[0]),
+                    _buildList(_entriesForTab(1), _scrollControllers[1]),
+                  ],
+                ),
     );
   }
 
@@ -195,8 +235,8 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
     );
   }
 
-  Widget _buildList() {
-    if (_filteredEntries.isEmpty) {
+  Widget _buildList(List<TraTimetableEntry> entries, ScrollController controller) {
+    if (entries.isEmpty) {
       return const Center(
         child: Text('這個時間範圍內沒有符合條件的班次', style: TextStyle(color: AppColors.textSecondary)),
       );
@@ -204,12 +244,12 @@ class _TraResultsScreenState extends State<TraResultsScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
-        controller: _scrollController,
+        controller: controller,
         padding: const EdgeInsets.all(16),
-        itemCount: _filteredEntries.length,
+        itemCount: entries.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
-          final entry = _filteredEntries[index];
+          final entry = entries[index];
           return SizedBox(
             height: _itemHeight - 8,
             child: TimetableListTile(

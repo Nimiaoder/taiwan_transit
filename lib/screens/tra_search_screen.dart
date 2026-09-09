@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import '../models/tra_models.dart';
 import '../services/tra_service.dart';
-import '../widgets/station_picker_sheet.dart';
-import '../widgets/train_type_selector.dart';
+import '../widgets/region_station_picker_sheet.dart';
 import '../widgets/wheel_time_picker.dart';
 import 'tra_results_screen.dart';
 
 /// =====================================================================
 /// 台鐵時刻表查詢畫面
 /// =====================================================================
-/// 使用者在這裡選擇：起站、迄站、查詢時間範圍（滾輪、24 小時制）、
-/// 要查哪些車種，按下查詢後導向 [TraResultsScreen]。
+/// 使用者在這裡選擇：起站、迄站（先選地區、再選車站）、
+/// 查詢時間範圍（滾輪、24 小時制），按下查詢後導向 [TraResultsScreen]。
+///
+/// 車種篩選已經移到結果頁用頁籤呈現，這裡不再需要選車種。
 class TraSearchScreen extends StatefulWidget {
   const TraSearchScreen({super.key});
 
@@ -27,23 +28,17 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   String? _loadError;
 
   List<TraStation> _stations = [];
-  List<TraTrainType> _trainTypes = [];
 
   TraStation? _origin;
   TraStation? _destination;
 
   late TimeOfDay _startTime;
-  final TimeOfDay _endTime = const TimeOfDay(hour: 23, minute: 59);
-  late TimeOfDay _currentEndTime;
-
-  Set<String> _selectedTrainTypeIds = {};
+  TimeOfDay _currentEndTime = const TimeOfDay(hour: 23, minute: 59);
 
   @override
   void initState() {
     super.initState();
-    final now = TimeOfDay.now();
-    _startTime = now;
-    _currentEndTime = _endTime;
+    _startTime = TimeOfDay.now();
     _loadData();
   }
 
@@ -54,12 +49,8 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
     });
     try {
       final stations = await _service.getStations();
-      final types = await _service.getTrainTypes();
       setState(() {
         _stations = stations;
-        _trainTypes = types;
-        // 需求：車種預設全勾
-        _selectedTrainTypeIds = types.map((e) => e.trainTypeId).toSet();
         _loading = false;
       });
     } catch (e) {
@@ -71,7 +62,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   }
 
   Future<void> _pickOrigin() async {
-    final result = await showStationPickerSheet(
+    final result = await showRegionStationPickerSheet(
       context: context,
       stations: _stations,
       title: '選擇起站',
@@ -80,7 +71,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   }
 
   Future<void> _pickDestination() async {
-    final result = await showStationPickerSheet(
+    final result = await showRegionStationPickerSheet(
       context: context,
       stations: _stations,
       title: '選擇迄站',
@@ -125,7 +116,6 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
           destination: _destination!,
           startTime: _startTime,
           endTime: _currentEndTime,
-          selectedTrainTypeIds: _selectedTrainTypeIds,
         ),
       ),
     );
@@ -165,7 +155,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // 起訖站選擇區
+        // 起訖站選擇區（先選地區、再選車站）
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -205,18 +195,6 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: _pickTimeRange,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // 車種勾選區
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: TrainTypeSelector(
-              trainTypes: _trainTypes,
-              selectedIds: _selectedTrainTypeIds,
-              onChanged: (ids) => setState(() => _selectedTrainTypeIds = ids),
-            ),
           ),
         ),
         const SizedBox(height: 24),

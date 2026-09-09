@@ -107,12 +107,14 @@ class TraStopTimeBrief {
   final String stationName;
   final String arrivalTime; // "HH:mm" 或 "HH:mm:ss"
   final String departureTime;
+  final int stopSequence; // 停靠站序，用來計算「經過幾站」
 
   const TraStopTimeBrief({
-    required this.stationId,
-    required this.stationName,
-    required this.arrivalTime,
-    required this.departureTime,
+    this.stationId = '',
+    this.stationName = '',
+    this.arrivalTime = '',
+    this.departureTime = '',
+    this.stopSequence = 0,
   });
 
   factory TraStopTimeBrief.fromJson(Map<String, dynamic> json) {
@@ -123,6 +125,7 @@ class TraStopTimeBrief {
       ).zhTw,
       arrivalTime: json['ArrivalTime']?.toString() ?? '',
       departureTime: json['DepartureTime']?.toString() ?? '',
+      stopSequence: int.tryParse(json['StopSequence']?.toString() ?? '') ?? 0,
     );
   }
 }
@@ -140,17 +143,42 @@ class TraTimetableEntry {
   });
 
   factory TraTimetableEntry.fromJson(Map<String, dynamic> json) {
+    // 注意：TDX 的「起訖站」時刻表查詢，每一個車次底下的 StopTimes
+    // 只會包含「起站」與「迄站」這兩站的到離站時間（依序排列），
+    // 不像車次詳細時刻表那樣包含沿途所有站。
+    final rawStops = json['StopTimes'] as List<dynamic>? ?? const [];
+    final stops = rawStops
+        .map((e) => TraStopTimeBrief.fromJson(e as Map<String, dynamic>))
+        .toList();
     return TraTimetableEntry(
       trainInfo: TraTrainInfo.fromJson(
         json['TrainInfo'] as Map<String, dynamic>? ?? const {},
       ),
-      originStopTime: TraStopTimeBrief.fromJson(
-        json['OriginStopTime'] as Map<String, dynamic>? ?? const {},
-      ),
-      destinationStopTime: TraStopTimeBrief.fromJson(
-        json['DestinationStopTime'] as Map<String, dynamic>? ?? const {},
-      ),
+      originStopTime: stops.isNotEmpty ? stops.first : const TraStopTimeBrief(),
+      destinationStopTime: stops.isNotEmpty ? stops.last : const TraStopTimeBrief(),
     );
+  }
+
+  /// 行駛時間（分鐘），會自動處理跨午夜的情況（例如 23:50 開往 00:10）
+  int get durationMinutes {
+    final dep = _parseMinutes(originStopTime.departureTime);
+    final arr = _parseMinutes(destinationStopTime.arrivalTime);
+    var diff = arr - dep;
+    if (diff < 0) diff += 24 * 60; // 跨午夜
+    return diff;
+  }
+
+  /// 經過的站數（起訖站中間，不含起訖站本身）
+  int get stopsBetween {
+    final diff = destinationStopTime.stopSequence - originStopTime.stopSequence - 1;
+    return diff < 0 ? 0 : diff;
+  }
+
+  static int _parseMinutes(String raw) {
+    if (raw.length < 5) return 0;
+    final h = int.tryParse(raw.substring(0, 2)) ?? 0;
+    final m = int.tryParse(raw.substring(3, 5)) ?? 0;
+    return h * 60 + m;
   }
 }
 

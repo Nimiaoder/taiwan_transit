@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/tdx_config.dart';
-import '../core/train_type_catalog.dart';
 import '../models/tra_models.dart';
 import 'tdx_auth_service.dart';
 
@@ -23,8 +22,6 @@ class TraService {
 
   // 車站清單快取（一整天內幾乎不會變動，查一次快取起來即可）
   List<TraStation>? _stationCache;
-  // 車種清單快取
-  List<TraTrainType>? _trainTypeCache;
 
   Uri _buildUri(String path, [Map<String, String>? query]) {
     return Uri.parse('${TdxConfig.apiBaseUrl}$path').replace(
@@ -48,57 +45,63 @@ class TraService {
 
   /// 呼叫「預期回傳陣列」的 API。
   ///
-  /// TDX 在金鑰未設定 / 超過免金鑰額度（每來源 IP 每日約 50 次）/
-  /// 帳號未訂閱該資料集等情況下，仍可能回傳 HTTP 200，
-  /// 但內容是一個「錯誤說明物件」(Map) 而不是預期的陣列(List)。
-  /// 這裡先做型別檢查，遇到這種情況丟出「看得懂」的錯誤訊息，
-  /// 而不是讓 `as List<dynamic>` 直接丟出難以理解的 TypeError。
-  Future<List<dynamic>> _getList(String path, [Map<String, String>? query]) async {
+  /// TDX v3 大多數端點的實際回傳格式，其實不是單純的陣列，而是像這樣的
+  /// 包裝物件：
+  /// ```json
+  /// { "UpdateTime": "...", "TrainDate": "...", "TrainTimetables": [ ... ] }
+  /// ```
+  /// 陣列被放在一個「資料集專屬」的 key 底下（例如 TrainTimetables /
+  /// Stations / TrainTypes / TrainLiveBoards）。這裡的邏輯依序嘗試：
+  /// 1. 如果整包本身就是陣列（保留相容性，以防未來 API 改回單純陣列）
+  /// 2. 如果有指定 [arrayKey]，直接取該欄位
+  /// 3. 都沒有的話，自動掃描物件底下第一個型別為 List 的欄位（容錯）
+  /// 4. 真的找不到任何陣列，才視為錯誤訊息物件並丟出例外
+  Future<List<dynamic>> _getList(
+    String path, {
+    String? arrayKey,
+    Map<String, String>? query,
+  }) async {
     final data = await _get(path, query);
+
     if (data is List) return data;
+
     if (data is Map) {
+      if (arrayKey != null && data[arrayKey] is List) {
+        return data[arrayKey] as List<dynamic>;
+      }
+      for (final value in data.values) {
+        if (value is List) return value;
+      }
       final message = data['Message'] ?? data['message'] ?? data.toString();
       final hint = TdxConfig.hasCredential
           ? ''
           : '（目前未設定 TDX_CLIENT_ID / TDX_CLIENT_SECRET，請確認已用 --dart-define 帶入金鑰，'
-          '免金鑰模式每日呼叫次數非常有限，很容易超過額度）';
+              '免金鑰模式每日呼叫次數非常有限，很容易超過額度）';
       throw Exception('TDX API 回傳非預期格式：$message$hint');
     }
+
     throw Exception('TDX API 回傳非預期格式（既非陣列也非物件）：$data');
   }
 
   /// 取得台鐵所有車站清單
   Future<List<TraStation>> getStations({bool forceRefresh = false}) async {
     if (!forceRefresh && _stationCache != null) return _stationCache!;
-    final data = await _getList('/v3/Rail/TRA/Station');
+    final data = await _getList('/v3/Rail/TRA/Station', arrayKey: 'Stations');
     final stations =
-    data.map((e) => TraStation.fromJson(e as Map<String, dynamic>)).toList();
+        data.map((e) => TraStation.fromJson(e as Map<String, dynamic>)).toList();
     _stationCache = stations;
     return stations;
   }
 
-  /// 取得台鐵車種清單；查詢失敗時退回內建的預設清單，
-  /// 確保「選擇車種」畫面永遠有東西可以勾選。
-  Future<List<TraTrainType>> getTrainTypes({bool forceRefresh = false}) async {
-    if (!forceRefresh && _trainTypeCache != null) return _trainTypeCache!;
-    try {
-      final data = await _getList('/v3/Rail/TRA/TrainType');
-      final types = data
-          .map((e) => TraTrainType.fromJson(e as Map<String, dynamic>))
-          .toList();
-      if (types.isNotEmpty) {
-        _trainTypeCache = types;
-        return types;
-      }
-    } catch (_) {
-      // 忽略錯誤，改用預設清單
-    }
-    _trainTypeCache = TrainTypeCatalog.defaultTypes;
-    return _trainTypeCache!;
-  }
-
   /// 查詢「起站 -> 迄站」在指定日期的所有時刻表
   /// [trainDate] 格式為 yyyy-MM-dd
+  ///
+  /// 實測 TDX 回傳格式為：
+  /// ```json
+  /// { "UpdateTime": "...", "TrainDate": "...", "TrainTimetables": [
+  ///     { "TrainInfo": {...}, "StopTimes": [起站, 迄站] }, ...
+  /// ] }
+  /// ```
   Future<List<TraTimetableEntry>> getOdTimetable({
     required String originStationId,
     required String destinationStationId,
@@ -106,7 +109,7 @@ class TraService {
   }) async {
     final path =
         '/v3/Rail/TRA/DailyTrainTimetable/OD/$originStationId/to/$destinationStationId/$trainDate';
-    final data = await _getList(path);
+    final data = await _getList(path, arrayKey: 'TrainTimetables');
     return data
         .map((e) => TraTimetableEntry.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -117,15 +120,23 @@ class TraService {
     required String trainNo,
     required String trainDate,
   }) async {
-    final path = '/v3/Rail/TRA/DailyTrainTimetable/TrainDate/$trainDate/TrainNo/$trainNo';
-    final data = await _get(path);
-    // TDX 這支 API 可能回傳單一物件、或包一層陣列，這裡兩種都相容處理
-    if (data is List && data.isNotEmpty) {
-      return TraTrainTimetableDetail.fromJson(data.first as Map<String, dynamic>);
+    const path =
+        '/v3/Rail/TRA/DailyTrainTimetable/TrainDate/';
+
+    final data = await _getList(
+      '$path$trainDate',
+      arrayKey: 'TrainTimetables',
+      query: {
+        r'$filter': "TrainInfo/TrainNo eq '$trainNo'",
+      },
+    );
+
+    if (data.isNotEmpty) {
+      return TraTrainTimetableDetail.fromJson(
+        data.first as Map<String, dynamic>,
+      );
     }
-    if (data is Map<String, dynamic>) {
-      return TraTrainTimetableDetail.fromJson(data);
-    }
+
     return null;
   }
 
@@ -133,7 +144,7 @@ class TraService {
   /// 一次查全部再由畫面端依 TrainNo 過濾，比對每個車次各查一次更省流量。
   Future<Map<String, TraLiveBoard>> getAllLiveBoards() async {
     try {
-      final data = await _getList('/v3/Rail/TRA/TrainLiveBoard');
+      final data = await _getList('/v3/Rail/TRA/TrainLiveBoard', arrayKey: 'TrainLiveBoards');
       final boards = data
           .map((e) => TraLiveBoard.fromJson(e as Map<String, dynamic>))
           .toList();
