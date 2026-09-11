@@ -7,12 +7,16 @@ import '../../models/train/tra_models.dart';
 /// =====================================================================
 /// 時刻表清單中的單一列（欄位對齊版）
 /// =====================================================================
-/// 版面由左到右分成 5 個「欄位」，每一列的欄位寬度固定，
+/// 版面由左到右分成 3 個「欄位」，每一列的欄位寬度固定，
 /// 因此整份清單上下看起來會完全對齊：
 ///
-///   [ 區間        ] [ 出發時間 ] [    ---->     ] [ 到站時間 ] [ 準點  ]
-///   [ 1234(車號)  ]              [ 經過 8 站 32 分鐘 ]
-///                                [ 開往 潮州     ]
+///   [ 區間       ] [ 07:12  ---->  08:04 ] [ 準點 ]
+///   [ 1234(車號) ] [   經過 8 站・32 分鐘  ]
+///                  [      開往 潮州       ]
+///
+/// 與舊版的差別：出發時間、箭頭、到站時間現在同屬「行程欄」的第一列，
+/// 箭頭不會再被擠到時間的上方；下方的「經過 x 站」「開往 xxx」則縮小字級，
+/// 視覺上成為時間列的附屬說明。
 ///
 /// 車種標籤採用與 [TraTrainDetailScreen] 相同的「圓角色塊」風格，
 /// 並依車種給不同顏色（區間藍 / 區間快淺藍 / 自強、普悠瑪、太魯閣橘 /
@@ -65,22 +69,16 @@ class TimetableListTile extends StatelessWidget {
                   child: _buildTrainTypeColumn(info),
                 ),
                 const SizedBox(width: _columnGap),
-                // 欄位 2：出發時間
-                SizedBox(
-                  width: _timeColumnWidth,
-                  child: _buildTimeText(origin.departureTime),
+                // 欄位 2：行程資訊（出發 → 到站、經過站數與時間、開往）
+                Expanded(
+                  child: _buildJourneyColumn(
+                    info,
+                    origin.departureTime,
+                    dest.arrivalTime,
+                  ),
                 ),
                 const SizedBox(width: _columnGap),
-                // 欄位 3：箭頭 + 經過站數/行駛時間 + 開往
-                Expanded(child: _buildMiddleColumn(info)),
-                const SizedBox(width: _columnGap),
-                // 欄位 4：到站時間
-                SizedBox(
-                  width: _timeColumnWidth,
-                  child: _buildTimeText(dest.arrivalTime),
-                ),
-                const SizedBox(width: _columnGap),
-                // 欄位 5：狀態（尚未發車 / 準點 / 誤點 / 已過站）
+                // 欄位 3：狀態（尚未發車 / 準點 / 誤點 / 已過站）
                 SizedBox(
                   width: _statusColumnWidth,
                   child: _buildStatusBadge(),
@@ -137,40 +135,64 @@ class TimetableListTile extends StatelessWidget {
     );
   }
 
-  /// 欄位 2 / 4：時間文字（出發、到站共用同一種樣式，確保左右對齊）
+  /// 出發 / 到站時間文字（共用同一種樣式與固定寬度，確保上下列對齊）
   Widget _buildTimeText(String rawTime) {
-    return Text(
-      _formatTime(rawTime),
-      textAlign: TextAlign.center,
-      maxLines: 1,
-      style: const TextStyle(
-        fontSize: 19,
-        fontWeight: FontWeight.w800,
-        color: AppColors.textPrimary,
+    return SizedBox(
+      width: _timeColumnWidth,
+      child: Text(
+        _formatTime(rawTime),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        style: const TextStyle(
+          fontSize: 19,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }
 
-  /// 欄位 3：中間的行程資訊（箭頭 / 經過站數與時間 / 開往終點站）
-  Widget _buildMiddleColumn(TraTrainInfo info) {
+  /// 欄位 2：行程資訊
+  /// 第一列：出發時間 ----> 到站時間（箭頭與兩個時間同一水平線上）
+  /// 第二列：經過 x 站・xx 分鐘
+  /// 第三列：開往 xxx
+  Widget _buildJourneyColumn(
+    TraTrainInfo info,
+    String departureTime,
+    String arrivalTime,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 用一條帶箭頭的線表示「起站 → 迄站」
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            _buildTimeText(departureTime),
+            const SizedBox(width: 6),
+            // 用一條帶箭頭的線表示「起站 → 迄站」，與兩側時間置中對齊
             Expanded(
-              child: Container(
-                height: 2,
-                decoration: BoxDecoration(
-                  color: AppColors.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_right_alt,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
               ),
             ),
-            const Icon(Icons.arrow_right_alt,
-                size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
+            _buildTimeText(arrivalTime),
           ],
         ),
         const SizedBox(height: 3),
@@ -179,21 +201,29 @@ class TimetableListTile extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            color: AppColors.textSecondary,
+          ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 1),
         Text(
           '開往 ${info.endingStationName}',
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+          style: const TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            color: AppColors.textDisabled,
+          ),
         ),
       ],
     );
   }
 
-  /// 欄位 5：即時動態狀態徽章
+  /// 欄位 3：即時動態狀態徽章
   Widget _buildStatusBadge() {
     if (isPast) {
       return _badge('已過站', AppColors.textDisabled);
