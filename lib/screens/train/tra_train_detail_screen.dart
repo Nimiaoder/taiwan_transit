@@ -40,6 +40,15 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
   TraTrainTimetableDetail? _detail;
   TraLiveBoard? _liveBoard;
 
+  /// widget.trainDate 是否為今天（yyyy-MM-dd）
+  bool get _isToday {
+    final now = DateTime.now();
+    final today = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    return widget.trainDate == today;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +65,10 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
         trainNo: widget.trainNo,
         trainDate: widget.trainDate,
       );
-      final liveBoards = await _service.getAllLiveBoards();
+      // 即時動態（誤點 / 列車位置）只對「今天」的班次有意義，
+      // 查詢未來日期時 TDX 回傳的仍是「今天」正在行駛的列車，故不可套用。
+      final liveBoards =
+          _isToday ? await _service.getAllLiveBoards() : const <String, TraLiveBoard>{};
       setState(() {
         _detail = detail;
         _liveBoard = liveBoards[widget.trainNo];

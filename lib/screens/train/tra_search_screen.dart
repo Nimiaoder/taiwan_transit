@@ -6,6 +6,7 @@ import '../../core/train/tra_stations.dart';
 import '../../models/train/tra_models.dart';
 import '../../services/search_history_service.dart';
 import '../../widgets/app_top_bar.dart';
+import '../../widgets/date_picker_sheet.dart';
 import '../../widgets/train/region_station_picker_sheet.dart';
 import '../../widgets/wheel_time_picker.dart';
 import 'tra_results_screen.dart';
@@ -33,6 +34,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   TraStation? _origin;
   TraStation? _destination;
 
+  late DateTime _startDate; // 出發日期（預設今天）
   late TimeOfDay _startTime;
 
   List<SearchRecord> _favorites = [];
@@ -42,6 +44,8 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, now.day);
     _startTime = TimeOfDay.now();
     _stations = TraStations.all
         .map((s) => TraStation(
@@ -136,6 +140,16 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
     _refreshFavoriteState();
   }
 
+  Future<void> _pickDepartureDate() async {
+    final picked = await showDeparturePickerDateSheet(
+      context: context,
+      initialDate: _startDate,
+    );
+    if (picked != null) {
+      setState(() => _startDate = DateTime(picked.year, picked.month, picked.day));
+    }
+  }
+
   Future<void> _pickDepartureTime() async {
     await showDepartureTimePickerSheet(
       context: context,
@@ -146,6 +160,10 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
 
   String _formatTimeOfDay(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  /// API 需要的日期字串格式（yyyy-MM-dd）
+  String _formatDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   bool get _canQuery =>
       _origin != null &&
@@ -171,6 +189,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
         builder: (_) => TraResultsScreen(
           origin: _origin!,
           destination: _destination!,
+          queryDate: _startDate,
           startTime: _startTime,
           endTime: const TimeOfDay(hour: 23, minute: 59),
         ),
@@ -390,22 +409,60 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
     );
   }
 
+  /// 出發時間卡片：日期與時間放在「同一個輸入框」中，中間用直線分隔，
+  /// 左右各佔一半，點左半選日期、點右半選時間。
   Widget _buildTimeCard() {
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: const Icon(Icons.schedule, color: AppColors.primary),
-        title: const Text('出發時間'),
-        subtitle: Text(
-          _formatTimeOfDay(_startTime),
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.schedule, size: 18, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('出發時間',
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _DepartureSegment(
+                      icon: Icons.calendar_today_outlined,
+                      value: _formatDate(_startDate),
+                      onTap: _pickDepartureDate,
+                      borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(14)),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 28,
+                    color: AppColors.divider,
+                  ),
+                  Expanded(
+                    child: _DepartureSegment(
+                      icon: Icons.access_time,
+                      value: _formatTimeOfDay(_startTime),
+                      onTap: _pickDepartureTime,
+                      borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(14)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        trailing: const Text('查詢至當日 23:59',
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-        onTap: _pickDepartureTime,
       ),
     );
   }
@@ -532,6 +589,50 @@ class _StationField extends StatelessWidget {
                 color: station == null
                     ? AppColors.textDisabled
                     : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 出發時間輸入框中的單一半邊（日期 / 時間）
+class _DepartureSegment extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final VoidCallback onTap;
+  final BorderRadius borderRadius;
+
+  const _DepartureSegment({
+    required this.icon,
+    required this.value,
+    required this.onTap,
+    required this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: borderRadius,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                value,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
           ],

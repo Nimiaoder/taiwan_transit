@@ -149,11 +149,6 @@ Future<void> showDepartureTimePickerSheet({
                     '選擇出發時間',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '將列出從此時間到當日 23:59 從起站發車的班次',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
                   const SizedBox(height: 16),
                   WheelTimePicker(
                     initialTime: time,

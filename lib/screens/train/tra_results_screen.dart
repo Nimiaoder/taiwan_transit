@@ -16,13 +16,16 @@ import 'tra_train_detail_screen.dart';
 /// 台鐵時刻表查詢結果清單
 /// =====================================================================
 /// - 上方用頁籤區分「全部」「區間」「對號座」（預設為「全部」）
-/// - 顯示「起站 -> 迄站」在查詢日期、出發時間到當日 23:59 的所有班次
+/// - 顯示「起站 -> 迄站」在使用者選定日期、出發時間之後的所有班次
 /// - 開啟畫面後自動捲動到使用者輸入的起始時間附近
 /// - 已經發車（早於目前時間）的班次整列反灰、標註「已過站」
 /// - 定時刷新即時動態（誤點資訊），每一筆都會顯示準點/誤點/尚未發車狀態
 class TraResultsScreen extends StatefulWidget {
   final TraStation origin;
   final TraStation destination;
+
+  /// 使用者選擇的查詢日期（會帶入 TDX API 的 TrainDate 參數）
+  final DateTime queryDate;
   final TimeOfDay startTime;
   final TimeOfDay endTime;
 
@@ -30,6 +33,7 @@ class TraResultsScreen extends StatefulWidget {
     super.key,
     required this.origin,
     required this.destination,
+    required this.queryDate,
     required this.startTime,
     required this.endTime,
   });
@@ -69,7 +73,8 @@ class _TraResultsScreenState extends State<TraResultsScreen>
           WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToStartTime());
         }
       });
-    _trainDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    // 所有 API（時刻表 / 車次詳細資料 / 重新整理）都使用同一個查詢日期
+    _trainDate = DateFormat('yyyy-MM-dd').format(widget.queryDate);
     _load();
     _liveBoardTimer = Timer.periodic(
       const Duration(seconds: TdxConfig.liveBoardRefreshSeconds),
@@ -117,6 +122,11 @@ class _TraResultsScreenState extends State<TraResultsScreen>
   }
 
   Future<void> _refreshLiveBoards() async {
+    // 即時動態只對「今天」有意義，查詢未來日期時不顯示誤點資訊
+    if (!_isToday) {
+      if (mounted && _liveBoards.isNotEmpty) setState(() => _liveBoards = {});
+      return;
+    }
     final boards = await _service.getAllLiveBoards();
     if (mounted) setState(() => _liveBoards = boards);
   }
@@ -149,7 +159,16 @@ class _TraResultsScreenState extends State<TraResultsScreen>
     return h * 60 + m;
   }
 
+  /// 查詢日期是否為今天（只有今天才需要標註「已過站」與即時動態）
+  bool get _isToday {
+    final now = DateTime.now();
+    return widget.queryDate.year == now.year &&
+        widget.queryDate.month == now.month &&
+        widget.queryDate.day == now.day;
+  }
+
   bool _isPast(TraTimetableEntry entry) {
+    if (!_isToday) return false;
     final now = DateTime.now();
     final nowMin = now.hour * 60 + now.minute;
     return _timeToMinutes(entry.originStopTime.departureTime) < nowMin;
