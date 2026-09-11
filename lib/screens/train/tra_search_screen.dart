@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../core/theme/app_theme.dart';
-import '../core/tra_stations.dart';
-import '../models/tra_models.dart';
-import '../services/search_history_service.dart';
-import '../widgets/region_station_picker_sheet.dart';
-import '../widgets/wheel_time_picker.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/train/tra_stations.dart';
+import '../../models/train/tra_models.dart';
+import '../../services/search_history_service.dart';
+import '../../widgets/app_top_bar.dart';
+import '../../widgets/train/region_station_picker_sheet.dart';
+import '../../widgets/wheel_time_picker.dart';
 import 'tra_results_screen.dart';
 
 /// =====================================================================
@@ -151,15 +152,21 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
       _destination != null &&
       _origin!.stationId != _destination!.stationId;
 
-  void _onQuery() {
+  /// 按下「查詢時刻表」：
+  /// 1. 先寫入歷史紀錄，並「當下」重新載入清單（不必退回首頁才會更新）
+  /// 2. 再導向結果頁；從結果頁返回時同樣重新載入一次，確保清單為最新
+  Future<void> _onQuery() async {
     if (!_canQuery) return;
-    SearchHistoryService.instance.addHistory(
+    await SearchHistoryService.instance.addHistory(
       originName: _origin!.name,
       originId: _origin!.stationId,
       destinationName: _destination!.name,
       destinationId: _destination!.stationId,
     );
-    Navigator.of(context).push(
+    // 查詢當下立即刷新「最近查詢」清單
+    await _loadSavedData();
+    if (!mounted) return;
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TraResultsScreen(
           origin: _origin!,
@@ -169,6 +176,8 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
         ),
       ),
     );
+    // 從結果頁返回後再同步一次（例如時間顯示「幾分鐘前」需要更新）
+    if (mounted) await _loadSavedData();
   }
 
   void _applyRecord(SearchRecord r) {
@@ -282,7 +291,27 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
     }
   }
 
+  /// 清除歷史紀錄前先跳出確認對話框，避免使用者誤觸造成資料遺失
   Future<void> _clearHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('清除歷史紀錄'),
+        content: Text('確定要刪除全部 ${_history.length} 筆最近查詢紀錄嗎？此動作無法復原。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('刪除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await SearchHistoryService.instance.clearHistory();
     await _loadSavedData();
   }
@@ -298,7 +327,8 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('台鐵時刻表')),
+      // 共用標題列（藍色漸層 + 右上角設定按鈕）
+      appBar: const AppTopBar(title: '台鐵時刻表'),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [

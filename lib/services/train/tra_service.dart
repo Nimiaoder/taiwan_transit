@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../config/tdx_config.dart';
-import '../models/tra_models.dart';
-import 'tdx_auth_service.dart';
+import '../../config/tdx_config.dart';
+import '../../models/train/tra_models.dart';
+import '../tdx_auth_service.dart';
 
 /// =====================================================================
 /// 台鐵（TRA）資料服務

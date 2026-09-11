@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../config/tdx_config.dart';
-import '../core/theme/app_theme.dart';
-import '../core/train_category.dart';
-import '../models/tra_models.dart';
-import '../services/tra_service.dart';
-import '../widgets/timetable_list_tile.dart';
+import '../../config/tdx_config.dart';
+import '../../core/theme/app_theme.dart';
+import '../../widgets/app_top_bar.dart';
+import '../../core/train/train_category.dart';
+import '../../models/train/tra_models.dart';
+import '../../services/train/tra_service.dart';
+import '../../widgets/train/timetable_list_tile.dart';
 import 'tra_train_detail_screen.dart';
 
 /// =====================================================================
@@ -39,7 +40,7 @@ class TraResultsScreen extends StatefulWidget {
 
 class _TraResultsScreenState extends State<TraResultsScreen>
     with SingleTickerProviderStateMixin {
-  static const double _itemHeight = 128;
+  static const double _itemHeight = 108;
 
   final _service = TraService.instance;
   final List<ScrollController> _scrollControllers = [
@@ -190,15 +191,13 @@ class _TraResultsScreenState extends State<TraResultsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.origin.name} → ${widget.destination.name}'),
+      // 共用標題列（藍色漸層 + 右上角設定按鈕），車種頁籤掛在標題列下方
+      appBar: AppTopBar(
+        title: '${widget.origin.name} → ${widget.destination.name}',
         bottom: _loading || _error != null
             ? null
             : TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
                 tabs: const [
                   Tab(text: TrainCategoryUtil.groupAll),
                   Tab(text: TrainCategoryUtil.groupLocal),

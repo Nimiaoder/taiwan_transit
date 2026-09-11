@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_theme.dart';
-import '../models/tra_models.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/train/tra_models.dart';
 
 /// 車種勾選清單（預設全勾）。
 class TrainTypeSelector extends StatelessWidget {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
+import '../widgets/app_top_bar.dart';
 import '../widgets/transport_mode_grid_item.dart';
-import 'settings_screen.dart';
-import 'tra_search_screen.dart';
+import 'train/tra_search_screen.dart';
 
 /// =====================================================================
 /// 主畫面：運具選擇
@@ -51,20 +51,8 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('台灣大眾運輸'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: '設定',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+      // 標題列改用共用元件 AppTopBar（藍色漸層 + 右上角設定按鈕）
+      appBar: const AppTopBar(title: '台灣大眾運輸'),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

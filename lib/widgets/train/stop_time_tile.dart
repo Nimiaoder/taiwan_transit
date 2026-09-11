@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_theme.dart';
-import '../models/tra_models.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/train/tra_models.dart';
 
 /// 車次詳細頁中，單一車站的停靠列（含上下連接線）。
 ///

@@ -30,6 +30,37 @@ class AppColors {
   static const Color divider = Color(0xFF2A2F37);
   static const Color error = Color(0xFFFF6B6B);
   static const Color warning = Color(0xFFFFC15E);
+
+  // ---------------------------------------------------------------
+  // 標題列（Title Bar）配色：全 App 共用的藍色漸層
+  // ---------------------------------------------------------------
+  /// 標題列漸層起始色（較深的藍）
+  static const Color titleBarStart = Color(0xFF10428F);
+
+  /// 標題列漸層結束色（較亮的藍）
+  static const Color titleBarEnd = Color(0xFF2E80DE);
+
+  /// 標題列上的文字 / 圖示顏色
+  static const Color titleBarForeground = Color(0xFFF7FAFF);
+
+  /// 標題列上「未選取」文字（例如 TabBar 未選中的頁籤）
+  static const Color titleBarMuted = Color(0xFFBFD6F5);
+
+  /// 標題列漸層（由左上到右下），集中在此方便日後統一調整風格
+  static const LinearGradient titleBarGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [titleBarStart, titleBarEnd],
+  );
+
+  // ---------------------------------------------------------------
+  // 車種識別色（結果頁 / 詳細頁的車種標籤共用）
+  // ---------------------------------------------------------------
+  static const Color trainLocal = Color(0xFF2F80ED); // 區間：藍
+  static const Color trainLocalExpress = Color(0xFF56CCF2); // 區間快：淺藍
+  static const Color trainExpress = Color(0xFFF2994A); // 自強 / 普悠瑪 / 太魯閣：橘
+  static const Color trainChuKuang = Color(0xFFF2B14A); // 莒光：橘（偏黃）
+  static const Color trainOther = Color(0xFF9AA3AF); // 其他車種：灰
 }
 
 class AppTheme {
@@ -46,16 +77,30 @@ class AppTheme {
         surface: AppColors.surface,
         error: AppColors.error,
       ),
+      // 標題列預設樣式：底色由 AppTopBar 的漸層負責，這裡統一文字與圖示樣式
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: AppColors.titleBarStart,
+        foregroundColor: AppColors.titleBarForeground,
+        iconTheme: IconThemeData(color: AppColors.titleBarForeground),
+        actionsIconTheme: IconThemeData(color: AppColors.titleBarForeground),
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: AppColors.textPrimary,
+          color: AppColors.titleBarForeground,
           fontSize: 20,
           fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
         ),
+      ),
+      // 標題列下方的頁籤（結果頁車種切換）也套用標題列配色
+      tabBarTheme: const TabBarThemeData(
+        labelColor: AppColors.titleBarForeground,
+        unselectedLabelColor: AppColors.titleBarMuted,
+        indicatorColor: AppColors.titleBarForeground,
+        dividerColor: Colors.transparent,
+        labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,

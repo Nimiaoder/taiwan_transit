@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_theme.dart';
-import '../models/tra_models.dart';
-import '../services/tra_service.dart';
-import '../widgets/stop_time_tile.dart';
+import '../../core/theme/app_theme.dart';
+import '../../widgets/app_top_bar.dart';
+import '../../core/train/train_category.dart';
+import '../../models/train/tra_models.dart';
+import '../../services/train/tra_service.dart';
+import '../../widgets/train/stop_time_tile.dart';
 
 /// =====================================================================
 /// 車次詳細資料畫面
@@ -71,9 +73,8 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('車次 ${widget.trainNo}'),
-      ),
+      // 共用標題列（藍色漸層 + 右上角設定按鈕）
+      appBar: AppTopBar(title: '車次 ${widget.trainNo}'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -140,6 +141,8 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
 
   Widget _buildHeader(TraTrainTimetableDetail detail) {
     final info = detail.trainInfo;
+    // 車種色塊顏色與結果頁一致（區間藍 / 區間快淺藍 / 自強類橘 / 莒光橘偏黃）
+    final typeColor = TrainCategoryUtil.colorOfName(info.trainTypeName);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -147,12 +150,13 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.15),
+              color: typeColor.withOpacity(0.16),
+              border: Border.all(color: typeColor.withOpacity(0.55)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               info.trainTypeName.isEmpty ? '車種未知' : info.trainTypeName,
-              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12),
+              style: TextStyle(color: typeColor, fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ),
           const SizedBox(width: 12),

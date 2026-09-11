@@ -8,6 +8,10 @@
 ///
 /// 分類邏輯用「車種名稱關鍵字比對」而非 TrainTypeID/TrainTypeCode，
 /// 因為 TDX 的名稱字串比較穩定好懂，也不用擔心猜錯代碼。
+import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
+
 enum TrainCategory {
   interval, // 區間
   intervalFast, // 區間快
@@ -54,6 +58,33 @@ class TrainCategoryUtil {
         return '其他';
     }
   }
+
+  /// 車種對應的識別色（結果頁 / 詳細頁的車種標籤共用）。
+  /// 之後要調整配色只需改 [AppColors] 裡的車種色票，不必動到畫面程式。
+  static Color color(TrainCategory category) {
+    switch (category) {
+      case TrainCategory.interval:
+        return AppColors.trainLocal; // 區間：藍
+      case TrainCategory.intervalFast:
+        return AppColors.trainLocalExpress; // 區間快：淺藍
+      case TrainCategory.tzeChiang:
+      case TrainCategory.puyuma:
+      case TrainCategory.taroko:
+        return AppColors.trainExpress; // 自強 / 普悠瑪 / 太魯閣：橘
+      case TrainCategory.chuKuang:
+        return AppColors.trainChuKuang; // 莒光：橘（偏黃）
+      case TrainCategory.other:
+        return AppColors.trainOther; // 其他：灰
+    }
+  }
+
+  /// 直接用 TDX 原始車種名稱取得顏色（畫面最常用的入口）
+  static Color colorOfName(String trainTypeName) =>
+      color(categorize(trainTypeName));
+
+  /// 直接用 TDX 原始車種名稱取得簡化後的顯示名稱
+  static String labelOfName(String trainTypeName) =>
+      label(categorize(trainTypeName));
 
   /// 是否屬於「區間」大群組（頁籤用）
   static bool isLocalGroup(TrainCategory category) =>

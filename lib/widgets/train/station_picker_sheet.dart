@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_theme.dart';
-import '../models/tra_models.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/train/tra_models.dart';
 
 /// 選擇車站用的 BottomSheet，附搜尋功能。
 /// 用於「起站」「迄站」的選擇，兩者共用同一個元件。

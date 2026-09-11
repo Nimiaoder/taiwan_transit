@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/theme/app_theme.dart';
+import '../widgets/app_top_bar.dart';
 
 /// =====================================================================
 /// 設定頁面
@@ -37,7 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('設定')),
+      // 設定頁本身不再顯示右上角設定按鈕，避免重複進入
+      appBar: const AppTopBar(title: '設定', showSettings: false),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -54,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.info_outline, color: AppColors.primary),
               title: const Text('版本'),
               trailing: Text(
-                _version.isEmpty ? '載入中…' : 'v$_version ($_buildNumber)',
+                _version.isEmpty ? '載入中…' : 'v$_version',
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontWeight: FontWeight.w600),
               ),

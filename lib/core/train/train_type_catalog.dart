@@ -1,4 +1,4 @@
-import '../models/tra_models.dart';
+import '../../models/train/tra_models.dart';
 
 /// =====================================================================
 /// 車種預設清單（Fallback）
