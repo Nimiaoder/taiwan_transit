@@ -35,12 +35,16 @@ class TimetableListTile extends StatelessWidget {
   final bool isPast;
   final VoidCallback onTap;
 
+  /// 列底色（由清單依索引交錯傳入：灰 / 黑灰）
+  final Color backgroundColor;
+
   const TimetableListTile({
     super.key,
     required this.entry,
     required this.liveBoard,
     required this.isPast,
     required this.onTap,
+    this.backgroundColor = AppColors.surface,
   });
 
   @override
@@ -52,7 +56,7 @@ class TimetableListTile extends StatelessWidget {
     return Opacity(
       opacity: isPast ? 0.4 : 1.0,
       child: Material(
-        color: AppColors.surface,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),

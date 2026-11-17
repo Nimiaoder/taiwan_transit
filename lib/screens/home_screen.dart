@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      // 標題列改用共用元件 AppTopBar（藍色漸層 + 右上角設定按鈕）
+      // 標題列改用共用元件 AppTopBar（黑灰漸層 + 右上角設定按鈕）
       appBar: const AppTopBar(title: '台灣大眾運輸'),
       body: Padding(
         padding: const EdgeInsets.all(20),

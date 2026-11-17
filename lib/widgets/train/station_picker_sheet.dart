@@ -93,10 +93,11 @@ class _StationPickerSheetState extends State<_StationPickerSheet> {
                     : ListView.separated(
                         controller: scrollController,
                         itemCount: _filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, __) => const SizedBox.shrink(),
                         itemBuilder: (context, index) {
                           final station = _filtered[index];
                           return ListTile(
+                            tileColor: AppColors.listRow(index),
                             title: Text(station.name),
                             subtitle: Text(station.stationId, style: const TextStyle(fontSize: 11)),
                             onTap: () => Navigator.of(context).pop(station),

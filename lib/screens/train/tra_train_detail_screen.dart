@@ -12,7 +12,7 @@ import '../../widgets/train/stop_time_tile.dart';
 /// =====================================================================
 /// 列出該車次沿途所有停靠站與到站/發車時間，並標示：
 /// - 使用者選擇的起站 / 迄站（不同顏色與標籤）
-/// - 列車目前所在（或即將抵達）的車站位置（依即時動態 TrainLiveBoard 判斷）
+/// - 列車目前所在（或即將抵達）的車站位置（依起站即時看板判斷）
 class TraTrainDetailScreen extends StatefulWidget {
   final String trainNo;
   final String trainDate;
@@ -66,9 +66,10 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
         trainDate: widget.trainDate,
       );
       // 即時動態（誤點 / 列車位置）只對「今天」的班次有意義，
-      // 查詢未來日期時 TDX 回傳的仍是「今天」正在行駛的列車，故不可套用。
-      final liveBoards =
-          _isToday ? await _service.getAllLiveBoards() : const <String, TraLiveBoard>{};
+      // 查詢未來日期時不套用。
+      final liveBoards = _isToday
+          ? await _service.getStationLiveBoards(widget.origin.stationId)
+          : const <String, TraLiveBoard>{};
       setState(() {
         _detail = detail;
         _liveBoard = liveBoards[widget.trainNo];
@@ -85,7 +86,7 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 共用標題列（藍色漸層 + 右上角設定按鈕）
+      // 共用標題列（黑灰漸層 + 右上角設定按鈕）
       appBar: AppTopBar(title: '車次 ${widget.trainNo}'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -137,6 +138,7 @@ class _TraTrainDetailScreenState extends State<TraTrainDetailScreen> {
               final stop = stops[index];
               return StopTimeTile(
                 stop: stop,
+                backgroundColor: AppColors.listRow(index),
                 isFirst: index == 0,
                 isLast: index == stops.length - 1,
                 isOrigin: stop.stationId == widget.origin.stationId,

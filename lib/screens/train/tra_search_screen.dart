@@ -346,7 +346,7 @@ class _TraSearchScreenState extends State<TraSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 共用標題列（藍色漸層 + 右上角設定按鈕）
+      // 共用標題列（黑灰漸層 + 右上角設定按鈕）
       appBar: const AppTopBar(title: '台鐵時刻表'),
       body: ListView(
         padding: const EdgeInsets.all(20),

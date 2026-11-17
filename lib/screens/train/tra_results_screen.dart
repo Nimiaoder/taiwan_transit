@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../config/tdx_config.dart';
+import '../../config/api_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/app_top_bar.dart';
 import '../../core/train/train_category.dart';
@@ -24,7 +24,7 @@ class TraResultsScreen extends StatefulWidget {
   final TraStation origin;
   final TraStation destination;
 
-  /// 使用者選擇的查詢日期（會帶入 TDX API 的 TrainDate 參數）
+  /// 使用者選擇的查詢日期（會帶入後端時刻表 API 的 date 參數）
   final DateTime queryDate;
   final TimeOfDay startTime;
   final TimeOfDay endTime;
@@ -77,7 +77,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
     _trainDate = DateFormat('yyyy-MM-dd').format(widget.queryDate);
     _load();
     _liveBoardTimer = Timer.periodic(
-      const Duration(seconds: TdxConfig.liveBoardRefreshSeconds),
+      const Duration(seconds: ApiConfig.liveBoardRefreshSeconds),
       (_) => _refreshLiveBoards(),
     );
   }
@@ -127,7 +127,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
       if (mounted && _liveBoards.isNotEmpty) setState(() => _liveBoards = {});
       return;
     }
-    final boards = await _service.getAllLiveBoards();
+    final boards = await _service.getStationLiveBoards(widget.origin.stationId);
     if (mounted) setState(() => _liveBoards = boards);
   }
 
@@ -210,7 +210,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 共用標題列（藍色漸層 + 右上角設定按鈕），車種頁籤掛在標題列下方
+      // 共用標題列（黑灰漸層 + 右上角設定按鈕），車種頁籤掛在標題列下方
       appBar: AppTopBar(
         title: '${widget.origin.name} → ${widget.destination.name}',
         bottom: _loading || _error != null
@@ -277,6 +277,7 @@ class _TraResultsScreenState extends State<TraResultsScreen>
             height: _itemHeight - 8,
             child: TimetableListTile(
               entry: entry,
+              backgroundColor: AppColors.listRow(index),
               liveBoard: _liveBoards[entry.trainInfo.trainNo],
               isPast: _isPast(entry),
               onTap: () => _openDetail(entry),

@@ -7,7 +7,7 @@ import '../screens/settings_screen.dart';
 /// 全 App 共用的標題列（Title Bar）
 /// =====================================================================
 /// 統一所有頁面的標題列樣式與行為，避免每個畫面各自寫一份 AppBar：
-/// - 以藍色漸層（[AppColors.titleBarGradient]）做底，符合現代簡潔風格
+/// - 以黑灰漸層（[AppColors.titleBarGradient]）做底，符合現代簡潔風格
 /// - 右上角固定提供「設定」按鈕（與首頁一致）
 /// - 可透過 [bottom] 掛上 TabBar 等額外元件（例如結果頁的車種頁籤）
 ///
@@ -68,7 +68,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 標題列的藍色漸層底（含底部細微陰影，讓標題列與內容有層次區隔）
+/// 標題列的黑灰漸層底（含底部細微陰影，讓標題列與內容有層次區隔）
 class _TitleBarBackground extends StatelessWidget {
   const _TitleBarBackground();
 

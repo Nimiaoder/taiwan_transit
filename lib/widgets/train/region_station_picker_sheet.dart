@@ -126,10 +126,11 @@ class _RegionStationPickerSheetState extends State<_RegionStationPickerSheet> {
                               controller: scrollController,
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               itemCount: stationsInRegion.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (_, __) => const SizedBox.shrink(),
                               itemBuilder: (context, index) {
                                 final station = stationsInRegion[index];
                                 return ListTile(
+                                  tileColor: AppColors.listRow(index),
                                   title: Text(station.name),
                                   onTap: () => Navigator.of(context).pop(station),
                                 );

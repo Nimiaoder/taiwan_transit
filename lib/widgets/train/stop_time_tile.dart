@@ -6,9 +6,9 @@ import '../../models/train/tra_models.dart';
 /// 車次詳細頁中，單一車站的停靠列（含上下連接線）。
 ///
 /// 依照需求，用不同的「站名樣式」區分：
-/// - [isOrigin]：使用者選擇的起站 -> 綠色 + 圓形實心點
+/// - [isOrigin]：使用者選擇的起站 -> 淺灰 + 圓形實心點
 /// - [isDestination]：使用者選擇的迄站 -> 紅色/橘色 + 圓形實心點
-/// - [isCurrent]：列車目前所在/即將抵達站 -> 藍色 + 有動畫感的外框圓點
+/// - [isCurrent]：列車目前所在/即將抵達站 -> 中灰 + 有動畫感的外框圓點
 class StopTimeTile extends StatelessWidget {
   final TraTrainStopDetail stop;
   final bool isFirst;
@@ -17,6 +17,9 @@ class StopTimeTile extends StatelessWidget {
   final bool isDestination;
   final bool isCurrent;
   final bool isPast;
+
+  /// 列底色（由清單依索引交錯傳入：灰 / 黑灰）
+  final Color? backgroundColor;
 
   const StopTimeTile({
     super.key,
@@ -27,11 +30,12 @@ class StopTimeTile extends StatelessWidget {
     required this.isDestination,
     required this.isCurrent,
     required this.isPast,
+    this.backgroundColor,
   });
 
   Color get _dotColor {
-    if (isCurrent) return AppColors.thsr; // 藍色：目前位置
-    if (isOrigin) return AppColors.primary; // 綠色：起站
+    if (isCurrent) return AppColors.thsr; // 中灰：目前位置
+    if (isOrigin) return AppColors.primary; // 淺灰：起站
     if (isDestination) return AppColors.warning; // 橘色：迄站
     return AppColors.textSecondary;
   }
@@ -52,7 +56,10 @@ class StopTimeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
+    return Container(
+      color: backgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -128,6 +135,7 @@ class StopTimeTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

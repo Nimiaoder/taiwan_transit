@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  # 用於呼叫 TDX 運輸資料流通服務平臺 API
+  # 用於呼叫自建後端 API（後端再向 TDX 取資料）
   http: ^1.2.2
   # 日期時間格式化 / 剖析
   intl: ^0.20.3
